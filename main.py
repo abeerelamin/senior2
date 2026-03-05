@@ -6,39 +6,46 @@ from typing import Optional
 import ee
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 from pydantic import BaseModel
 
 from config import YEARS, LOCATION_LAT, LOCATION_LON, LOCATION_NAME
-from gee_utils import get_dw_tile_urls   # must exist in this folder
-from chat_utils import ask_chatbot       # must exist in this folder
+from gee_utils import get_dw_tile_urls
+from chat_utils import ask_chatbot
 
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+# ---------------------------------------------------------------------
+# FastAPI app + static frontend
+# ---------------------------------------------------------------------
 app = FastAPI()
-# Serve static files
 
-# Root route serves index.html
-@app.get("/")
-def serve_frontend():
-    return FileResponse("index.html")
-    
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # can restrict later
+    allow_origins=["*"],  # you can restrict later
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# -------- EARTH ENGINE INIT (SAFE) --------
+
+
+
+@app.get("/")
+def serve_frontend():
+    return FileResponse("index.html")
+
+
+# ---------------------------------------------------------------------
+# Earth Engine init
+# ---------------------------------------------------------------------
 EE_READY = False
 EE_ERROR = None
 
 
 def init_ee():
-    """Initialize Earth Engine once. Don't crash the whole app if it fails."""
+    """Initialize Earth Engine once. Do not crash the whole app if it fails."""
     global EE_READY, EE_ERROR
     if EE_READY:
         return
@@ -67,17 +74,17 @@ def init_ee():
     except Exception as e:
         EE_READY = False
         EE_ERROR = str(e)
-        # Log but don't crash
         print("❌ Failed to initialize Earth Engine:", EE_ERROR)
 
 
 @app.on_event("startup")
 async def startup_event():
-    # Try to init EE when the app starts
     init_ee()
 
 
-# -------- MODELS --------
+# ---------------------------------------------------------------------
+# Models
+# ---------------------------------------------------------------------
 class MapRequest(BaseModel):
     mode: str
     year_a: int
@@ -93,7 +100,9 @@ class ChatRequest(BaseModel):
     city: Optional[str] = None
 
 
-# -------- HELPERS --------
+# ---------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------
 geolocator = Nominatim(user_agent="dw-change-app")
 
 
@@ -112,7 +121,9 @@ def resolve_city(city: Optional[str]):
     return LOCATION_NAME, LOCATION_LAT, LOCATION_LON
 
 
-# -------- SIMPLE HEALTH CHECK --------
+# ---------------------------------------------------------------------
+# Health
+# ---------------------------------------------------------------------
 @app.get("/health")
 def health():
     return {
@@ -122,7 +133,9 @@ def health():
     }
 
 
-# -------- MAP ENDPOINT --------
+# ---------------------------------------------------------------------
+# Map config endpoint
+# ---------------------------------------------------------------------
 @app.post("/map-config")
 def map_config(req: MapRequest):
     if not EE_READY:
@@ -160,20 +173,33 @@ def map_config(req: MapRequest):
     }
 
 
-# -------- CHAT ENDPOINT --------
+# ---------------------------------------------------------------------
+# Chat endpoint – returns explanation + short summary (≤ ~2 sentences)
+# ---------------------------------------------------------------------
 @app.post("/chat")
 def chat(req: ChatRequest):
+    """
+    Returns:
+      reply   -> full explanation for the chat window
+      summary -> very short summary (1–2 sentences) for the bottom bar
+    """
     city_name, lat, lon = resolve_city(req.city)
 
     system_msg = {
         "role": "system",
         "content": (
             "You are a helpful assistant that explains Dynamic World land cover "
-            "maps and changes over time using SIMPLE language. "
+            "maps and changes over time in SIMPLE language. "
             "The app has three analysis modes: change_detection, single_year, timeseries. "
             f"Current mode: {req.mode}, years: {req.year_a}–{req.year_b}. "
             f"Current region: {city_name} at ({lat:.3f}, {lon:.3f}). "
-            "Explain clearly what the map likely shows and any key patterns."
+            "First, form a clear explanation for the user. "
+            "Then return your answer STRICTLY as JSON with TWO keys: "
+            "'explanation' and 'summary'. "
+            "'explanation' is a friendly paragraph (up to ~8 sentences). "
+            "'summary' is at most TWO short sentences that highlight the main "
+            "changes or what the current map likely shows. "
+            "Do not include any extra text outside the JSON."
         ),
     }
 
@@ -182,9 +208,25 @@ def chat(req: ChatRequest):
         {"role": "user", "content": req.message},
     ]
 
-    reply = ask_chatbot(messages_for_api)
+    raw = ask_chatbot(messages_for_api)
+
+    explanation = raw
+    summary = raw
+
+    # Try to parse JSON from model
+    try:
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            explanation = data.get("explanation", raw)
+            summary = data.get("summary", explanation)
+    except Exception:
+        # Fallback: cut summary to ~2 sentences
+        parts = explanation.split(".")
+        summary = ".".join(parts[:2]).strip()
+        if summary and not summary.endswith("."):
+            summary += "."
 
     return {
-        "reply": reply,
-        "summary": reply,
+        "reply": explanation,
+        "summary": summary,
     }
