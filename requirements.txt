@@ -4,3 +4,8 @@ openai
 earthengine-api
 geopy
 pydantic
+requests
+pillow
+imageio
+imageio-ffmpeg
+numpy
