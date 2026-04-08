@@ -14,15 +14,17 @@
 
   <style>
     :root {
-      --bg-main: #111827;
-      --bg-nav: #111827;
-      --bg-panel: #1f2933;
-      --bg-bottom: #111827;
-      --border-subtle: #374151;
+      --bg-main: #0f172a;
+      --bg-nav: rgba(15, 23, 42, 0.92);
+      --bg-panel: rgba(30, 41, 59, 0.88);
+      --bg-bottom: rgba(15, 23, 42, 0.94);
+      --border-subtle: rgba(55, 65, 81, 0.9);
       --accent: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.35);
       --text-main: #e5e7eb;
       --text-muted: #9ca3af;
-      --text-soft: #9ca3af;
+      --text-soft: #94a3b8;
+      --glass-blur: blur(14px);
     }
 
     * {
@@ -33,313 +35,529 @@
 
     html, body {
       height: 100%;
-      background: radial-gradient(circle at top left, #111827, #020617);
+      overflow: hidden;
+      background: #020617;
       color: var(--text-main);
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
     }
 
     body {
-      display: flex;
-      justify-content: center;
+      margin: 0;
     }
 
-    .app-shell {
+    .app-root {
       width: 100%;
-      max-width: 1380px;
+      height: 100dvh;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
-      height: 100vh;
+      position: relative;
     }
 
-    header.top-bar {
-      height: 72px;
-      background: var(--bg-nav);
-      border-bottom: 1px solid var(--border-subtle);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 24px;
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.65; transform: scale(0.92); }
     }
 
-    .top-brand {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .top-brand-title {
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-    }
-
-    .top-brand-subtitle {
-      font-size: 12px;
-      color: var(--text-soft);
-    }
-
-    .top-right-text {
-      font-size: 11px;
-      color: var(--text-soft);
-    }
-
-    main.app-main {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 290px minmax(0, 1fr);
-      grid-template-rows: minmax(0, 1fr) auto;
-      grid-template-areas:
-        "sidebar right"
-        "bottom bottom";
-      column-gap: 18px;
-      row-gap: 12px;
-      padding: 14px 24px 12px;
-    }
-
-    @media (max-width: 1024px) {
-      main.app-main {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: auto minmax(0, 1fr) auto;
-        grid-template-areas:
-          "sidebar"
-          "right"
-          "bottom";
-      }
-    }
-
-    aside.sidebar {
-      grid-area: sidebar;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      height: 100%;
-    }
-
-    .monitor-box,
-    .chatbot-box {
-      background: var(--bg-panel);
-      border-radius: 16px;
-      border: 1px solid var(--border-subtle);
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65);
-      padding: 14px 14px 12px;
-    }
-
-    .monitor-box {
-      flex: 0 0 auto;
-    }
-
-    .chatbot-box {
-      flex: 0 0 auto;
-    }
-
-    .monitor-title {
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-
-    .monitor-subtitle {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-bottom: 10px;
-    }
-
-    .monitor-radios {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .monitor-radio {
+    .chat-row-head {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 13px;
-      cursor: pointer;
+      flex-shrink: 0;
     }
 
-    .monitor-radio input[type="radio"] {
-      width: 14px;
-      height: 14px;
-      accent-color: var(--accent);
-    }
-
-    label {
-      font-size: 11px;
-      color: var(--text-muted);
-      display: block;
-      margin-bottom: 3px;
-    }
-
-    .year-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 6px;
-    }
-
-    select,
-    input[type="text"] {
-      width: 100%;
-      border-radius: 10px;
-      border: 1px solid #4b5563;
-      background: #020617;
-      color: var(--text-main);
-      font-size: 12px;
-      padding: 6px 10px;
-      outline: none;
-    }
-
-    select:focus,
-    input[type="text"]:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5);
-    }
-
-    .field-caption {
+    .assistant-label {
       font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
       color: var(--text-soft);
-      margin-top: 4px;
-    }
-
-    .monitor-divider {
-      border-top: 1px solid #111827;
-      margin: 10px 0 8px;
-    }
-
-    .chatbot-header {
-      display: flex;
-      justify-content: space-between;
+      display: inline-flex;
       align-items: center;
-      margin-bottom: 6px;
-      font-size: 13px;
-      font-weight: 600;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .assistant-label::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+      animation: pulse-dot 2s ease-in-out infinite;
+      flex-shrink: 0;
     }
 
     .chat-toggle {
-      background: none;
-      border: none;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(71, 85, 105, 0.75);
       color: var(--text-soft);
-      font-size: 16px;
+      font-size: 11px;
+      line-height: 1;
       cursor: pointer;
-      padding: 0;
+      padding: 4px 9px;
+      border-radius: 999px;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     }
 
+    .chat-toggle:hover {
+      background: rgba(59, 130, 246, 0.2);
+      color: var(--text-main);
+      border-color: rgba(96, 165, 250, 0.45);
+    }
+
+    /* Horizontal transcript: pills in a row, scroll sideways */
     .chat-messages {
+      flex: 1 1 160px;
+      min-width: 0;
+      min-height: 38px;
+      max-height: 40px;
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      overflow-x: auto;
+      overflow-y: hidden;
       border-radius: 10px;
-      border: 1px solid #4b5563;
-      background: #020617;
-      padding: 8px;
-      height: 140px;
-      overflow-y: auto;
-      font-size: 12px;
-      margin-bottom: 8px;
+      border: 1px solid rgba(51, 65, 85, 0.65);
+      background: rgba(2, 6, 23, 0.55);
+      font-size: 11px;
+      scrollbar-width: thin;
+      transition: max-height 0.25s ease, min-height 0.25s ease, padding 0.25s ease, opacity 0.2s ease, border-color 0.2s ease;
+    }
+
+    .chat-messages.collapsed {
+      flex: 0 0 0;
+      min-width: 0;
+      min-height: 0;
+      max-height: 0;
+      padding: 0;
+      margin: 0;
+      opacity: 0;
+      overflow: hidden;
+      border-color: transparent;
+      border-width: 0;
     }
 
     .message {
-      margin-bottom: 6px;
+      flex-shrink: 0;
+      margin-bottom: 0;
+      max-width: min(260px, 55vw);
     }
 
     .bubble {
-      padding: 6px 8px;
-      border-radius: 10px;
-      line-height: 1.4;
-      white-space: pre-wrap;
-      max-width: 100%;
-      font-size: 12px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: min(260px, 55vw);
+      font-size: 11px;
     }
 
     .message.bot .bubble {
-      background: #111827;
+      background: rgba(30, 41, 59, 0.95);
       color: #e5e7eb;
+      border: 1px solid rgba(51, 65, 85, 0.8);
     }
 
     .message.user .bubble {
-      background: #2563eb;
-      color: #e5e7eb;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #f8fafc;
+    }
+
+    .site-header-chat .chat-form {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex: 1 1 240px;
+      min-width: 140px;
+      max-width: 420px;
     }
 
     .chat-form {
       display: flex;
-      gap: 6px;
+      gap: 8px;
+      align-items: center;
     }
 
     .chat-input {
       flex: 1;
+      min-width: 0;
       border-radius: 999px;
-      border: 1px solid #4b5563;
-      background: #020617;
+      border: 1px solid rgba(71, 85, 105, 0.85);
+      background: rgba(2, 6, 23, 0.75);
       color: var(--text-main);
       font-size: 12px;
-      padding: 6px 12px;
+      padding: 7px 14px;
+      height: 38px;
     }
 
     .chat-input::placeholder {
-      color: #6b7280;
+      color: #64748b;
+    }
+
+    .chat-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-glow);
     }
 
     .chat-send,
     .video-btn {
       border-radius: 999px;
       border: none;
-      padding: 6px 14px;
+      padding: 0 16px;
+      height: 38px;
       font-size: 12px;
-      font-weight: 500;
-      background: #3b82f6;
+      font-weight: 600;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
       color: #ffffff;
       cursor: pointer;
       white-space: nowrap;
+      box-shadow: 0 2px 10px rgba(37, 99, 235, 0.3);
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
     }
 
     .chat-send:hover,
     .video-btn:hover {
-      box-shadow: 0 8px 18px rgba(59, 130, 246, 0.55);
-      transform: translateY(-0.5px);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 22px rgba(59, 130, 246, 0.5);
     }
 
-    .right-area {
-      grid-area: right;
+    .chat-send:active,
+    .video-btn:active {
+      transform: translateY(0);
+    }
+
+    /* —— Site header (standard app layout) —— */
+    .site-header {
+      flex-shrink: 0;
+      z-index: 1100;
+      background: rgba(15, 23, 42, 0.92);
+      border-bottom: 1px solid var(--border-subtle);
+      backdrop-filter: var(--glass-blur);
+    }
+
+    .site-header-inner {
+      max-width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 12px clamp(12px, 3vw, 24px) 14px;
+    }
+
+    .site-header-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.45);
+    }
+
+    .brand-block {
       display: flex;
       flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .top-brand-title {
+      font-size: clamp(1.2rem, 2.4vw, 1.55rem);
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      line-height: 1.15;
+      background: linear-gradient(90deg, #e2e8f0, #94a3b8);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .top-brand-subtitle {
+      font-size: 11px;
+      color: var(--text-soft);
+      max-width: 36rem;
+      line-height: 1.4;
+      margin: 0;
+    }
+
+    .brand-meta {
+      font-size: 10px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin: 0;
+      text-align: right;
+      max-width: 220px;
+      opacity: 0.9;
+    }
+
+    @media (max-width: 640px) {
+      .brand-meta {
+        text-align: left;
+        max-width: none;
+        width: 100%;
+      }
+    }
+
+    /* Row 2: assistant — one horizontal strip */
+    .site-header-chat {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 10px 14px;
+      padding: 10px 0 2px;
+    }
+
+    @media (max-width: 720px) {
+      .site-header-chat {
+        flex-wrap: wrap;
+      }
+      .site-header-chat .chat-row-head {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .site-header-chat .chat-messages {
+        flex: 1 1 100%;
+        max-width: none;
+        order: 2;
+      }
+      .site-header-chat .chat-form {
+        flex: 1 1 100%;
+        max-width: none;
+        order: 3;
+      }
+    }
+
+    /* Row 3: map controls */
+    .site-header-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 10px 14px;
+      padding-top: 12px;
+      margin-top: 8px;
+      border-top: 1px solid rgba(51, 65, 85, 0.55);
+    }
+
+    @media (min-width: 900px) {
+      .site-header-controls {
+        align-items: center;
+      }
+    }
+
+    .monitor-toolbar-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin: 0;
+      flex: 0 0 auto;
+      align-self: center;
+      padding-bottom: 2px;
+    }
+
+    .monitor-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 10px 12px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .mode-segments {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 4px;
+      border-radius: 14px;
+      background: rgba(2, 6, 23, 0.65);
+      border: 1px solid rgba(51, 65, 85, 0.9);
+    }
+
+    .monitor-radio {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin: 0;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .monitor-radio input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .monitor-radio span {
+      display: block;
+      padding: 7px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .monitor-radio input:focus-visible + span {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .monitor-radio input:checked + span {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(37, 99, 235, 0.25));
+      color: #f1f5f9;
+      box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.45);
+    }
+
+    .toolbar-fields {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
       gap: 10px;
+      flex: 1;
+      min-width: min(100%, 280px);
+    }
+
+    .toolbar-field {
+      flex: 1;
+      min-width: 100px;
+    }
+
+    .toolbar-field.city-field {
+      flex: 1.4;
+      min-width: 140px;
+    }
+
+    label {
+      font-size: 10px;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .year-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 0;
+    }
+
+    select,
+    input[type="text"] {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(71, 85, 105, 0.95);
+      background: rgba(2, 6, 23, 0.9);
+      color: var(--text-main);
+      font-size: 12px;
+      padding: 8px 10px;
+      outline: none;
+    }
+
+    select:focus,
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-glow);
+    }
+
+    .field-caption {
+      font-size: 9px;
+      color: var(--text-soft);
+      margin-top: 3px;
+      line-height: 1.25;
+    }
+
+    .monitor-divider {
+      display: none;
+    }
+
+    .video-inline {
+      flex: 1 1 100%;
+      min-width: 100%;
+    }
+
+    @media (min-width: 720px) {
+      .video-inline {
+        flex: 0 1 auto;
+        min-width: 200px;
+      }
+    }
+
+    /* —— Full-screen map stage —— */
+    .map-stage {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      display: flex;
+      flex-direction: column;
     }
 
     .map-container {
-      position: relative;
-      flex: 1;
-      border-radius: 16px;
+      position: absolute;
+      inset: 0;
+      border-radius: 0;
       overflow: hidden;
-      border: 1px solid #374151;
-      box-shadow: 0 24px 50px rgba(0, 0, 0, 0.75);
+      border: none;
       background: #020617;
-      padding: 10px;
+      padding: 6px;
+    }
+
+    @media (min-width: 768px) {
+      .map-container {
+        padding: 8px 10px 10px;
+      }
     }
 
     .map-grid {
       display: flex;
-      gap: 10px;
+      flex-direction: row;
+      gap: 8px;
+      width: 100%;
       height: 100%;
+    }
+
+    @media (max-width: 700px) {
+      .map-grid {
+        flex-direction: column;
+      }
     }
 
     .map-panel {
       flex: 1;
+      min-height: 0;
       display: flex;
       flex-direction: column;
-      border-radius: 12px;
+      border-radius: 14px;
       overflow: hidden;
-      border: 1px solid #111827;
-      background: #020617;
+      border: 1px solid rgba(51, 65, 85, 0.85);
+      background: rgba(2, 6, 23, 0.5);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
     }
 
     .map-panel-header {
       font-size: 11px;
+      font-weight: 600;
       color: var(--text-muted);
-      padding: 4px 8px;
-      border-bottom: 1px solid #111827;
+      padding: 6px 10px;
+      border-bottom: 1px solid rgba(30, 41, 59, 0.9);
+      background: rgba(15, 23, 42, 0.6);
+      flex-shrink: 0;
     }
 
     .map-inner {
       flex: 1;
+      min-height: 120px;
     }
 
     #mapA,
@@ -350,38 +568,44 @@
 
     .map-overlay-badge {
       position: absolute;
-      bottom: 10px;
-      left: 10px;
-      padding: 4px 10px;
+      bottom: max(12px, env(safe-area-inset-bottom, 12px));
+      left: 12px;
+      padding: 6px 12px;
       border-radius: 999px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(148, 163, 184, 0.9);
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(148, 163, 184, 0.5);
       font-size: 10px;
-      color: #e5e7eb;
-      backdrop-filter: blur(6px);
-      z-index: 9999;
+      color: #e2e8f0;
+      backdrop-filter: blur(8px);
+      z-index: 1000;
       pointer-events: none;
+      max-width: min(92vw, 320px);
+      line-height: 1.35;
     }
 
     .map-legend {
       position: absolute;
-      bottom: 10px;
-      right: 10px;
-      padding: 8px 10px;
-      border-radius: 12px;
-      background: rgba(15, 23, 42, 0.97);
-      border: 1px solid #1f2937;
-      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.8);
+      bottom: max(12px, env(safe-area-inset-bottom, 12px));
+      right: 12px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.94);
+      border: 1px solid rgba(51, 65, 85, 0.9);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
       font-size: 11px;
-      min-width: 150px;
-      z-index: 9999;
-      pointer-events: none;
+      min-width: 140px;
+      max-width: min(42vw, 200px);
+      max-height: 45vh;
+      overflow-y: auto;
+      z-index: 1000;
+      pointer-events: auto;
+      backdrop-filter: blur(10px);
     }
 
     .map-legend-title {
       font-weight: 600;
-      margin-bottom: 4px;
-      color: #e5e7eb;
+      margin-bottom: 6px;
+      color: #f1f5f9;
     }
 
     .map-legend-item {
@@ -401,24 +625,45 @@
     }
 
     .map-legend-label {
-      font-size: 11px;
+      font-size: 10px;
       color: #e5e7eb;
     }
 
+    /* —— Report dock over map —— */
     .report-analysis {
-      background: var(--bg-bottom);
-      border-radius: 12px;
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      z-index: 900;
+      background: rgba(15, 23, 42, 0.94);
+      border-radius: 14px;
       border: 1px solid var(--border-subtle);
-      padding: 10px 14px;
+      padding: 10px 12px;
       font-size: 11px;
       display: grid;
-      grid-template-columns: 160px 210px 160px minmax(0, 1fr);
-      gap: 14px;
-      align-items: center;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 12px;
+      align-items: start;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.35);
+      pointer-events: auto;
+      max-height: 28vh;
+      overflow-y: auto;
+    }
+
+    @media (min-width: 900px) {
+      .report-analysis {
+        grid-template-columns: 140px 160px 120px minmax(0, 1fr);
+        max-height: none;
+        left: 12px;
+        right: 12px;
+        bottom: max(72px, env(safe-area-inset-bottom, 16px));
+      }
     }
 
     .report-label {
-      font-size: 10px;
+      font-size: 9px;
       text-transform: uppercase;
       letter-spacing: 0.09em;
       color: var(--text-soft);
@@ -438,184 +683,190 @@
       font-size: 11px;
       color: var(--text-muted);
       line-height: 1.35;
-      max-height: 2.7em;
+      max-height: 4.5em;
       overflow: hidden;
       display: -webkit-box;
-      -webkit-line-clamp: 2;
+      -webkit-line-clamp: 3;
+      line-clamp: 3;
       -webkit-box-orient: vertical;
     }
 
-    @media (max-width: 900px) {
-      .map-grid {
-        flex-direction: column;
-      }
+    .leaflet-control-layers {
+      border-radius: 12px !important;
+      overflow: hidden;
+      border: 1px solid rgba(51, 65, 85, 0.9) !important;
+      background: rgba(15, 23, 42, 0.95) !important;
+      color: #e5e7eb !important;
+    }
 
-      .report-analysis {
-        grid-template-columns: 1fr 1fr;
-        row-gap: 8px;
+    .leaflet-control-layers-toggle {
+      width: 38px !important;
+      height: 38px !important;
+    }
+
+    @media (max-width: 699px) {
+      .map-overlay-badge {
+        top: 10px;
+        bottom: auto;
+        left: 10px;
+      }
+      .map-legend {
+        top: 10px;
+        bottom: auto;
+        right: 10px;
+        max-height: min(36vh, 220px);
       }
     }
   </style>
 </head>
 <body>
-  <div class="app-shell">
-    <header class="top-bar">
-      <div class="top-brand">
-        <div class="top-brand-title">EarthMonitor</div>
-        <div class="top-brand-subtitle">Real-time environmental monitoring</div>
-      </div>
-      <div class="top-right-text">
-        Dynamic World · Google Earth Engine · OpenAI Assistant
-      </div>
-    </header>
-
-    <main class="app-main">
-      <aside class="sidebar">
-        <section class="monitor-box">
-          <div class="monitor-title">Monitor Functions</div>
-          <div class="monitor-subtitle">
-            Choose how to explore changes in your region.
+  <div class="app-root">
+    <header class="site-header">
+      <div class="site-header-inner">
+        <div class="site-header-top">
+          <div class="brand-block">
+            <div class="top-brand-title">EarthMonitor</div>
+            <p class="top-brand-subtitle">Dynamic World land cover — use the assistant row, then map controls below.</p>
           </div>
+          <p class="brand-meta">Dynamic World · Earth Engine · OpenAI</p>
+        </div>
 
-          <div class="monitor-radios">
-            <label class="monitor-radio">
-              <input type="radio" name="mode" value="change_detection" checked />
-              <span>Change Detection</span>
-            </label>
-            <label class="monitor-radio">
-              <input type="radio" name="mode" value="single_year" />
-              <span>Single Year Map</span>
-            </label>
-            <label class="monitor-radio">
-              <input type="radio" name="mode" value="timeseries" />
-              <span>Time Series</span>
-            </label>
+        <div class="site-header-chat" aria-label="Assistant chat">
+          <div class="chat-row-head">
+            <span class="assistant-label">Assistant</span>
+            <button type="button" class="chat-toggle" aria-expanded="true" aria-controls="chat-messages" title="Show or hide transcript">−</button>
           </div>
-
-          <div class="monitor-divider"></div>
-
-          <label>Years</label>
-          <div class="year-row">
-            <div id="yearA-container" style="flex:1;">
-              <small class="field-caption">Year (single) / Year A (before / start)</small>
-              <select id="yearA">
-                <option>2017</option>
-                <option>2018</option>
-                <option>2019</option>
-                <option selected>2020</option>
-                <option>2021</option>
-                <option>2022</option>
-                <option>2023</option>
-                <option>2024</option>
-              </select>
-            </div>
-            <div id="yearB-container" style="flex:1;">
-              <small class="field-caption">Year B (after / end)</small>
-              <select id="yearB">
-                <option>2017</option>
-                <option>2018</option>
-                <option>2019</option>
-                <option>2020</option>
-                <option>2021</option>
-                <option selected>2022</option>
-                <option>2023</option>
-                <option>2024</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="monitor-divider"></div>
-
-          <label for="city">Region (city name)</label>
-          <input id="city" type="text" placeholder="Abu Dhabi, Dubai, Berlin..." />
-          <div class="field-caption">
-            You can also type: "set location to Dubai" in the chat.
-          </div>
-
-          <div class="monitor-divider"></div>
-
-          <div id="video-tools" style="display:none;">
-            <label>Time Series Video</label>
-            <button id="generate-video-btn" type="button" class="video-btn" style="width:100%; margin-bottom:8px;">
-              Generate Monthly Video
-            </button>
-            <div class="field-caption" id="video-status">
-              Creates a monthly MP4 for the selected years and region.
-            </div>
-            <a
-              id="video-download-link"
-              style="display:none; color:#38bdf8; font-size:12px; text-decoration:none; margin-top:8px; display:inline-block;"
-              download="timeseries.mp4"
-            >
-              Download video
-            </a>
-          </div>
-        </section>
-
-        <section class="chatbot-box">
-          <div class="chatbot-header">
-            <span>Assistant</span>
-            <button type="button" class="chat-toggle" aria-label="Toggle chat">−</button>
-          </div>
-
           <div class="chat-messages" id="chat-messages">
             <div class="message bot">
-              <div class="bubble bot">
+              <div class="bubble bot" title="Hi! I can help you explore Dynamic World land cover and describe the changes between your selected years and region.">
                 Hi! I can help you explore Dynamic World land cover and describe the changes between your selected years and region.
               </div>
             </div>
           </div>
-
           <form class="chat-form" onsubmit="handleChatSubmit(event)">
             <input
               type="text"
               id="chat-input"
               class="chat-input"
-              placeholder="Ask about the map, or say 'set location to Dubai', 'swap years'..."
+              placeholder="Message the assistant…"
               autocomplete="off"
             />
             <button type="submit" class="chat-send">Send</button>
           </form>
-        </section>
-      </aside>
-
-      <div class="right-area">
-        <div class="map-container">
-          <div class="map-grid">
-            <div class="map-panel" id="map-panel-a">
-              <div class="map-panel-header" id="map-panel-a-label">Before (Year A)</div>
-              <div class="map-inner"><div id="mapA"></div></div>
-            </div>
-            <div class="map-panel" id="map-panel-b">
-              <div class="map-panel-header" id="map-panel-b-label">After (Year B)</div>
-              <div class="map-inner"><div id="mapB"></div></div>
-            </div>
-          </div>
-          <div class="map-overlay-badge">Live</div>
-          <div class="map-legend" id="map-legend"></div>
         </div>
 
-        <section class="report-analysis">
-          <div>
-            <div class="report-label">Current layer</div>
-            <div class="report-value" id="report-layer">Change Detection</div>
-          </div>
-          <div>
-            <div class="report-label">Selected region</div>
-            <div class="report-value link" id="report-region">Abu Dhabi (example)</div>
-          </div>
-          <div>
-            <div class="report-label">Years</div>
-            <div class="report-value" id="report-years">2020 → 2022</div>
-          </div>
-          <div>
-            <div class="report-label">Summary</div>
-            <div class="report-text" id="report-summary">
-              Change detection report will appear here once you chat with the assistant.
+        <div class="site-header-controls">
+          <span class="monitor-toolbar-label">Map controls</span>
+          <div class="monitor-toolbar">
+            <div class="mode-segments" role="radiogroup" aria-label="Analysis mode">
+            <label class="monitor-radio">
+              <input type="radio" name="mode" value="change_detection" checked />
+              <span>Change</span>
+            </label>
+            <label class="monitor-radio">
+              <input type="radio" name="mode" value="single_year" />
+              <span>Single year</span>
+            </label>
+            <label class="monitor-radio">
+              <input type="radio" name="mode" value="timeseries" />
+              <span>Time series</span>
+            </label>
+            </div>
+            <div class="toolbar-fields">
+            <div class="toolbar-field">
+              <label>Years</label>
+              <div class="year-row">
+                <div id="yearA-container" style="flex:1;">
+                  <small class="field-caption">Year A / start</small>
+                  <select id="yearA">
+                    <option>2017</option>
+                    <option>2018</option>
+                    <option>2019</option>
+                    <option selected>2020</option>
+                    <option>2021</option>
+                    <option>2022</option>
+                    <option>2023</option>
+                    <option>2024</option>
+                  </select>
+                </div>
+                <div id="yearB-container" style="flex:1;">
+                  <small class="field-caption">Year B / end</small>
+                  <select id="yearB">
+                    <option>2017</option>
+                    <option>2018</option>
+                    <option>2019</option>
+                    <option>2020</option>
+                    <option>2021</option>
+                    <option selected>2022</option>
+                    <option>2023</option>
+                    <option>2024</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="toolbar-field city-field">
+              <label for="city">Region</label>
+              <input id="city" type="text" placeholder="City or area…" />
+              <div class="field-caption">Tip: chat can set location too.</div>
+            </div>
+            <div id="video-tools" class="video-inline" style="display:none;">
+              <label>Time series video</label>
+              <button id="generate-video-btn" type="button" class="video-btn" style="width:100%; margin-bottom:6px;">
+                Generate monthly video
+              </button>
+              <div class="field-caption" id="video-status">
+                Creates a monthly MP4 for the selected years and region.
+              </div>
+              <a
+                id="video-download-link"
+                style="display:none; color:#38bdf8; font-size:12px; text-decoration:none; margin-top:6px;"
+                download="timeseries.mp4"
+              >
+                Download video
+              </a>
+            </div>
             </div>
           </div>
-        </section>
+        </div>
       </div>
+    </header>
+
+    <main class="map-stage">
+      <div class="map-container">
+        <div class="map-grid">
+          <div class="map-panel" id="map-panel-a">
+            <div class="map-panel-header" id="map-panel-a-label">Before (Year A)</div>
+            <div class="map-inner"><div id="mapA"></div></div>
+          </div>
+          <div class="map-panel" id="map-panel-b">
+            <div class="map-panel-header" id="map-panel-b-label">After (Year B)</div>
+            <div class="map-inner"><div id="mapB"></div></div>
+          </div>
+        </div>
+        <div class="map-overlay-badge" id="live-activity-badge">Live · loading global activity…</div>
+        <div class="map-legend" id="map-legend"></div>
+      </div>
+
+      <section class="report-analysis">
+        <div>
+          <div class="report-label">Current layer</div>
+          <div class="report-value" id="report-layer">Change Detection</div>
+        </div>
+        <div>
+          <div class="report-label">Selected region</div>
+          <div class="report-value link" id="report-region">Abu Dhabi (example)</div>
+        </div>
+        <div>
+          <div class="report-label">Years</div>
+          <div class="report-value" id="report-years">2020 → 2022</div>
+        </div>
+        <div>
+          <div class="report-label">Summary</div>
+          <div class="report-text" id="report-summary">
+            Change detection report will appear here once you chat with the assistant.
+          </div>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -683,6 +934,56 @@
       zoom: 3,
       layers: [satelliteB]
     });
+
+    const earthquakeGroupA = L.layerGroup().addTo(mapA);
+    const earthquakeGroupB = L.layerGroup().addTo(mapB);
+
+    const USGS_QUAKES_URL =
+      "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_hour.geojson";
+    const EARTHQUAKE_REFRESH_MS = 3 * 60 * 1000;
+
+    async function refreshEarthquakeLayers() {
+      const badge = document.getElementById("live-activity-badge");
+      try {
+        const res = await fetch(USGS_QUAKES_URL);
+        if (!res.ok) throw new Error("USGS HTTP " + res.status);
+        const data = await res.json();
+        earthquakeGroupA.clearLayers();
+        earthquakeGroupB.clearLayers();
+
+        const gjOpts = {
+          pointToLayer(feature, latlng) {
+            const mag = feature.properties.mag || 0;
+            const r = Math.max(3, Math.min(22, mag * 2.5));
+            return L.circleMarker(latlng, {
+              radius: r,
+              color: "#f97316",
+              weight: 1,
+              fillColor: "#fdba74",
+              fillOpacity: 0.55,
+            });
+          },
+          onEachFeature(feature, layer) {
+            const p = feature.properties || {};
+            const t = p.time ? new Date(p.time).toLocaleString() : "";
+            layer.bindPopup(
+              `<strong>M${p.mag ?? "?"}</strong><br>${p.place || "Unknown"}<br><small>${t}</small>`
+            );
+          },
+        };
+
+        L.geoJSON(data, gjOpts).eachLayer((ly) => earthquakeGroupA.addLayer(ly));
+        L.geoJSON(data, gjOpts).eachLayer((ly) => earthquakeGroupB.addLayer(ly));
+
+        const n = data.features ? data.features.length : 0;
+        const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        badge.textContent =
+          "Live · USGS M4.5+ past hour: " + n + " events · updated " + now;
+      } catch (err) {
+        console.warn("Earthquake feed:", err);
+        badge.textContent = "Live · global activity feed unavailable (offline or blocked)";
+      }
+    }
 
     let dwLayerA = null;
     let dwLayerB = null;
@@ -898,6 +1199,7 @@
         const overlaysA = {};
         if (dwLayerA) overlaysA["Dynamic World"] = dwLayerA;
         if (dwLayerChangeA) overlaysA["Change Detection"] = dwLayerChangeA;
+        overlaysA["Recent quakes (USGS)"] = earthquakeGroupA;
         layerControlA = L.control.layers(baseA, overlaysA, { position: "topleft" }).addTo(mapA);
 
         if (mode === "change_detection") {
@@ -906,6 +1208,7 @@
           const overlaysB = {};
           if (dwLayerB) overlaysB["Dynamic World"] = dwLayerB;
           if (dwLayerChangeB) overlaysB["Change Detection"] = dwLayerChangeB;
+          overlaysB["Recent quakes (USGS)"] = earthquakeGroupB;
           layerControlB = L.control.layers(baseB, overlaysB, { position: "topleft" }).addTo(mapB);
         } else {
           if (layerControlB) {
@@ -988,6 +1291,24 @@
     updateYearUIForMode();
     updateVideoToolsVisibility();
     loadMapFromBackend();
+
+    refreshEarthquakeLayers();
+    setInterval(refreshEarthquakeLayers, EARTHQUAKE_REFRESH_MS);
+
+    window.addEventListener("resize", () => {
+      setTimeout(() => {
+        mapA.invalidateSize();
+        mapB.invalidateSize();
+      }, 120);
+    });
+
+    document.querySelector(".chat-toggle").addEventListener("click", () => {
+      const box = document.getElementById("chat-messages");
+      const btn = document.querySelector(".chat-toggle");
+      const nowCollapsed = box.classList.toggle("collapsed");
+      btn.setAttribute("aria-expanded", nowCollapsed ? "false" : "true");
+      btn.textContent = nowCollapsed ? "+" : "−";
+    });
 
     function appendMessage(role, text) {
       const container = document.getElementById("chat-messages");
