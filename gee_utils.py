@@ -11,8 +11,15 @@ import ee
 
 from config import CLASS_PALETTE, DW_MIN_DATE
 
-# Full-world bounds (avoid poles where DW is sparse)
-WORLD_GEOM = ee.Geometry.Rectangle([-179.99, -58.0, 179.99, 85.0])
+# Lazy: ee.Geometry must NOT be built at import time — it calls into ee.data before Initialize().
+_world_geom_cached = None
+
+
+def world_geometry() -> ee.Geometry:
+    global _world_geom_cached
+    if _world_geom_cached is None:
+        _world_geom_cached = ee.Geometry.Rectangle([-179.99, -58.0, 179.99, 85.0])
+    return _world_geom_cached
 
 
 def _clamp_date(d: date, max_d: date | None = None) -> date:

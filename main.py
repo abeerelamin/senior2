@@ -29,7 +29,7 @@ from config import (
     DW_MIN_DATE,
 )
 from gee_utils import (
-    WORLD_GEOM,
+    world_geometry,
     regional_geom,
     get_dw_tile_urls_for_geometry,
     tile_url_for_day,
@@ -257,6 +257,7 @@ def health():
 # ---------------------------------------------------------------------
 @app.post("/map-config")
 def map_config(req: MapRequest):
+    init_ee()
     if not EE_READY:
         raise HTTPException(
             status_code=500,
@@ -271,7 +272,7 @@ def map_config(req: MapRequest):
 
     if mode == "home":
         if not req.city or not str(req.city).strip():
-            url = tile_url_for_day(WORLD_GEOM, da)
+            url = tile_url_for_day(world_geometry(), da)
             return {
                 "city": "World",
                 "center_lat": 15.0,
@@ -381,6 +382,7 @@ def chat(req: ChatRequest):
 # ---------------------------------------------------------------------
 @app.post("/timeseries-video")
 def timeseries_video(req: VideoRequest):
+    init_ee()
     if not EE_READY:
         raise HTTPException(
             status_code=500,
