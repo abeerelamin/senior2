@@ -1669,14 +1669,26 @@
     }
 
     async function loadChangeDetectionStats(state) {
+      const date1 = String(state.date_a || "");
+      const date2 = String(state.date_b || "");
+      if (!date1 || !date2) {
+        throw new Error("Please select both dates.");
+      }
+      if (new Date(date1) >= new Date(date2)) {
+        throw new Error("Date B must be after Date A.");
+      }
+      const windowDays = Number(state.window_days || 30);
+      if (!Number.isFinite(windowDays) || windowDays < 1 || windowDays > 180) {
+        throw new Error("Window days must be between 1 and 180.");
+      }
       try {
         const res = await fetch(`${API_BASE}/api/change-detection`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            date1: state.date_a,
-            date2: state.date_b,
-            window_days: state.window_days,
+            date1: date1,
+            date2: date2,
+            window_days: windowDays,
             region_name: (state.city || "").trim() || null,
           }),
         });
@@ -1837,7 +1849,12 @@
           if (tiles.change) {
             dwLayerChangeC = L.tileLayer(tiles.change, { opacity: 0.82, crossOrigin: true }).addTo(mapC);
           }
-          await loadChangeDetectionStats(state);
+          await loadChangeDetectionStats({
+            date_a: data.date_a,
+            date_b: data.date_b,
+            city: (state.city || "").trim() || data.city,
+            window_days: state.window_days,
+          });
           if (mapA.hasLayer(floodSpotsLayerA)) {
             mapA.removeLayer(floodSpotsLayerA);
           }
@@ -2037,7 +2054,10 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             region: (state.city || "").trim() || lastChangeStats.region_label,
-            date_range: { start: state.date_a, end: state.date_b },
+            date_range: {
+              start: lastChangeStats.before_date || state.date_a,
+              end: lastChangeStats.after_date || state.date_b,
+            },
             change_stats: lastChangeStats,
           }),
         });
