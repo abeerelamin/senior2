@@ -2172,7 +2172,7 @@
         applyChangeModeLayerControls();
         syncLegendsForMode("change_detection");
 
-        if (mapA.hasLayer(floodSpotsLayerA)) {
+        if (mode !== "home" && mapA.hasLayer(floodSpotsLayerA)) {
           mapA.removeLayer(floodSpotsLayerA);
         }
 
