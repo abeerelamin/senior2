@@ -1078,6 +1078,51 @@
       white-space: pre-wrap;
     }
 
+    #globalLoading {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2600;
+      pointer-events: none;
+    }
+
+    #globalLoading.show {
+      display: flex;
+    }
+
+    .loading-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(51, 65, 85, 0.95);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+      color: #e2e8f0;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .loading-spinner {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid rgba(148, 163, 184, 0.45);
+      border-top-color: #60a5fa;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
     .leaflet-control-layers {
       border-radius: 12px !important;
       overflow: hidden;
@@ -1265,6 +1310,12 @@
         <div id="reportContent"></div>
       </div>
     </div>
+    <div id="globalLoading" aria-hidden="true">
+      <div class="loading-pill">
+        <span class="loading-spinner"></span>
+        <span>Loading...</span>
+      </div>
+    </div>
   </div>
 
   <script
@@ -1279,6 +1330,7 @@
     let lastMapData = null;
     let lastChangeStats = null;
     let lastVideoUrl = null;
+    let busyCount = 0;
 
     const DW_CLASSES = [
       { label: "Water", color: "#419bdf" },
@@ -1291,6 +1343,20 @@
       { label: "Bare Ground", color: "#a59b8f" },
       { label: "Snow & Ice", color: "#b39fe1" },
     ];
+
+    function beginLoading() {
+      busyCount += 1;
+      const box = document.getElementById("globalLoading");
+      if (box) box.classList.add("show");
+    }
+
+    function endLoading() {
+      busyCount = Math.max(0, busyCount - 1);
+      if (busyCount === 0) {
+        const box = document.getElementById("globalLoading");
+        if (box) box.classList.remove("show");
+      }
+    }
 
     const FLOOD_SPOTS = [
       {
@@ -1466,23 +1532,30 @@
     }
 
     async function fetchPresetChangeStatsForHome(preset) {
-      const res = await fetch(`${API_BASE}/api/change-detection`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          date1: preset.date1,
-          date2: preset.date2,
-          region: preset.region_bbox || null,
-          region_name: preset.region,
-          window_days: preset.window || 30,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || res.statusText);
-      return data;
+      beginLoading();
+      try {
+        const res = await fetch(`${API_BASE}/api/change-detection`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date1: preset.date1,
+            date2: preset.date2,
+            region: preset.region_bbox || null,
+            region_name: preset.region,
+            window_days: preset.window || 30,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || res.statusText);
+        return data;
+      } finally {
+        endLoading();
+      }
     }
 
     async function openHomeSpotReport(presetId) {
+      beginLoading();
+      try {
       const preset = getPresetById(presetId);
       if (!preset) return;
       applyChangePreset(preset, false);
@@ -1508,6 +1581,9 @@
         renderReport(data);
       } catch (err) {
         el.innerHTML = '<div class="card err-box">Error: ' + escapeHtml(err.message) + "</div>";
+      }
+      } finally {
+        endLoading();
       }
     }
     window.openHomeSpotReport = openHomeSpotReport;
@@ -1928,6 +2004,7 @@
     }
 
     async function loadChangeDetectionStats(state) {
+      beginLoading();
       try {
         const date1 = String(state.date_a || "");
         const date2 = String(state.date_b || "");
@@ -1994,6 +2071,8 @@
         if (summaryEl) {
           summaryEl.textContent = "Error: " + err.message;
         }
+      } finally {
+        endLoading();
       }
     }
 
@@ -2101,6 +2180,7 @@
     }
 
     async function loadChangeDetectionMode(state) {
+      beginLoading();
       try {
         if (dwLayerA) {
           mapA.removeLayer(dwLayerA);
@@ -2180,13 +2260,17 @@
         }, 200);
       } catch (err) {
         console.error("loadChangeDetectionMode", err);
+      } finally {
+        endLoading();
       }
     }
 
     async function loadMapFromBackend() {
+      beginLoading();
       const state = getUIState();
       if (state.mode === "change_detection") {
         await loadChangeDetectionMode(state);
+        endLoading();
         return;
       }
 
@@ -2340,10 +2424,13 @@
         }, 200);
       } catch (err) {
         console.error("Error calling /map-config", err);
+      } finally {
+        endLoading();
       }
     }
 
     async function generateTimeSeriesVideo() {
+      beginLoading();
       const status = document.getElementById("video-status");
       const link = document.getElementById("video-download-link");
       const state = getUIState();
@@ -2389,6 +2476,8 @@
       } catch (err) {
         console.error(err);
         status.textContent = "Error generating video.";
+      } finally {
+        endLoading();
       }
     }
 
@@ -2421,6 +2510,8 @@
       document.getElementById("reportBox").classList.remove("show");
     });
     document.getElementById("btnReport").addEventListener("click", async () => {
+      beginLoading();
+      try {
       const lastResult = lastChangeStats;
       if (!lastResult) {
         alert("Run Generate first.");
@@ -2448,6 +2539,9 @@
         renderReport(data);
       } catch (err) {
         el.innerHTML = '<div class="card err-box">Error: ' + escapeHtml(err.message) + "</div>";
+      }
+      } finally {
+        endLoading();
       }
     });
 
@@ -2559,10 +2653,14 @@
     }
 
     async function handleChatSubmit(e) {
+      beginLoading();
       e.preventDefault();
       const input = document.getElementById("chat-input");
       const text = input.value.trim();
-      if (!text) return;
+      if (!text) {
+        endLoading();
+        return;
+      }
 
       appendMessage("user", text);
 
@@ -2602,6 +2700,8 @@
       } catch (err) {
         console.error("Error calling /chat", err);
         appendMessage("bot", "Sorry, I couldn't reach the server.");
+      } finally {
+        endLoading();
       }
 
       input.value = "";
