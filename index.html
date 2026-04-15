@@ -1500,23 +1500,26 @@
       return CHANGE_PRESET_OPTIONS.find((p) => p.id === presetId) || null;
     }
 
-    function buildHomeSpotPopupHtml(spot, stats, loading, errorText) {
+    function truncatePopupLine(text, maxLen) {
+      const raw = String(text || "").replace(/\s+/g, " ").trim();
+      if (!raw) return "";
+      if (raw.length <= maxLen) return raw;
+      return raw.slice(0, Math.max(0, maxLen - 1)).trimEnd() + "…";
+    }
+
+    function buildHomeSpotPopupHtml(spot, stats, loading, errorText, reportData) {
       const title = "<strong>" + escapeHtml(spot.name) + "</strong><br><small>" + escapeHtml(spot.line || "") + "</small>";
       if (loading) return title + "<br><small>Loading change summary...</small>";
       if (errorText) return title + "<br><small style=\"color:#fecaca;\">" + escapeHtml(errorText) + "</small>";
       if (!stats) return title + "<br><small>No summary available.</small>";
-      let topLine = "";
-      if (stats.top_transitions && stats.top_transitions.length) {
-        const t = stats.top_transitions[0];
-        topLine =
-          "<br><small>Top: " +
-          escapeHtml(t.from_name) +
-          " → " +
-          escapeHtml(t.to_name) +
-          " (" +
-          t.percent_of_aoi +
-          "%)</small>";
-      }
+      const narrative = reportData && reportData.narrative ? reportData.narrative : {};
+      const line1 = truncatePopupLine(narrative.what_changed || "", 145);
+      const line2 = truncatePopupLine(narrative.risk_meaning || "", 145);
+      const reportSummaryHtml =
+        line1 || line2
+          ? "<br><small>" + escapeHtml(line1 || "Change analysis is ready.") + "</small>" +
+            "<br><small>" + escapeHtml(line2 || "Tap below to view full report.") + "</small>"
+          : "<br><small>Report summary unavailable. Open full report for details.</small>";
       return (
         title +
         "<br><small>Changed: " +
@@ -1524,33 +1527,43 @@
         "% · Risk: " +
         escapeHtml(stats.risk_level || "") +
         "</small>" +
-        topLine +
+        reportSummaryHtml +
         "<br><button type=\"button\" class=\"secondary\" style=\"margin-top:8px;padding:0.35rem 0.6rem;font-size:0.75rem;\" onclick=\"openHomeSpotReport('" +
         spot.preset_id +
-        "')\">Open full report</button>"
+        "')\">Switch to Change mode + open report</button>"
       );
     }
 
     async function fetchPresetChangeStatsForHome(preset) {
-      beginLoading();
-      try {
-        const res = await fetch(`${API_BASE}/api/change-detection`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            date1: preset.date1,
-            date2: preset.date2,
-            region: preset.region_bbox || null,
-            region_name: preset.region,
-            window_days: preset.window || 30,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || res.statusText);
-        return data;
-      } finally {
-        endLoading();
-      }
+      const res = await fetch(`${API_BASE}/api/change-detection`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date1: preset.date1,
+          date2: preset.date2,
+          region: preset.region_bbox || null,
+          region_name: preset.region,
+          window_days: preset.window || 30,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || res.statusText);
+      return data;
+    }
+
+    async function fetchPresetReportForHome(preset, stats) {
+      const res = await fetch(`${API_BASE}/api/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          region: preset.region || (stats && stats.region_label) || "",
+          date_range: { start: preset.date1, end: preset.date2 },
+          change_stats: stats,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || res.statusText);
+      return data;
     }
 
     async function openHomeSpotReport(presetId) {
@@ -1656,16 +1669,20 @@
       });
       marker.bindPopup(buildHomeSpotPopupHtml(spot, null, true, null), { maxWidth: 290 });
       marker.on("click", async () => {
+        beginLoading();
         marker.setPopupContent(buildHomeSpotPopupHtml(spot, null, true, null));
         try {
           const preset = getPresetById(spot.preset_id);
           if (!preset) throw new Error("Preset not found");
           const stats = await fetchPresetChangeStatsForHome(preset);
-          marker.setPopupContent(buildHomeSpotPopupHtml(spot, stats, false, null));
+          const reportData = await fetchPresetReportForHome(preset, stats);
+          marker.setPopupContent(buildHomeSpotPopupHtml(spot, stats, false, null, reportData));
         } catch (err) {
           marker.setPopupContent(
             buildHomeSpotPopupHtml(spot, null, false, err && err.message ? err.message : "Failed to load summary")
           );
+        } finally {
+          endLoading();
         }
       });
       floodSpotsLayerA.addLayer(marker);
@@ -2249,7 +2266,7 @@
         applyChangeModeLayerControls();
         syncChangeModeLegends(true);
 
-        if (mapA.hasLayer(floodSpotsLayerA)) {
+        if (mode !== "home" && mapA.hasLayer(floodSpotsLayerA)) {
           mapA.removeLayer(floodSpotsLayerA);
         }
 
