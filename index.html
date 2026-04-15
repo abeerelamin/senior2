@@ -1139,7 +1139,7 @@
                   <input type="date" id="dateB" min="2018-01-01" />
                 </div>
               </div>
-              <div style="margin-top:8px;">
+              <div id="change-window-wrap" style="margin-top:8px;">
                 <small class="field-caption">Window (+/- days around each date for change detection)</small>
                 <input type="number" id="windowDays" min="1" max="180" value="30" />
               </div>
@@ -1538,11 +1538,16 @@
     function updateDateUIForMode() {
       const mode = currentMode();
       const bBox = document.getElementById("dateB-container");
+      const presetsWrap = document.querySelector(".change-presets");
+      const windowWrap = document.getElementById("change-window-wrap");
       if (mode === "home") {
         bBox.style.display = "none";
       } else {
         bBox.style.display = "block";
       }
+      const showChangeOnly = mode === "change_detection";
+      if (presetsWrap) presetsWrap.style.display = showChangeOnly ? "block" : "none";
+      if (windowWrap) windowWrap.style.display = showChangeOnly ? "block" : "none";
     }
 
     function updateVideoToolsVisibility() {
