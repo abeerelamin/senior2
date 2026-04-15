@@ -789,6 +789,42 @@
       color: #e5e7eb;
     }
 
+    .leaflet-control.custom-map-legend {
+      margin: 10px !important;
+    }
+
+    .map-inline-legend {
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.94);
+      border: 1px solid rgba(51, 65, 85, 0.9);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+      color: #e5e7eb;
+      backdrop-filter: blur(8px);
+      max-width: min(92vw, 680px);
+    }
+
+    .map-inline-legend .map-legend-title {
+      margin-bottom: 4px;
+      font-size: 10px;
+    }
+
+    .map-inline-legend.horizontal .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px 10px;
+      align-items: center;
+    }
+
+    .map-inline-legend.horizontal .map-legend-item {
+      margin-bottom: 0;
+      white-space: nowrap;
+    }
+
+    .map-inline-legend.single .map-legend-item {
+      margin-bottom: 0;
+    }
+
     .video-preview {
       position: absolute;
       inset: 0;
@@ -1586,10 +1622,63 @@
     let layerControlA = null;
     let layerControlB = null;
     let layerControlC = null;
+    let classLegendControlB = null;
+    let changeLegendControlC = null;
 
     function currentMode() {
       const r = document.querySelector('input[name="mode"]:checked');
       return r ? r.value : "home";
+    }
+
+    function makeLegendControl(position, html) {
+      const Ctl = L.Control.extend({
+        options: { position: position || "topright" },
+        onAdd: function () {
+          const div = L.DomUtil.create("div", "custom-map-legend");
+          div.innerHTML = html;
+          L.DomEvent.disableClickPropagation(div);
+          return div;
+        },
+      });
+      return new Ctl();
+    }
+
+    function buildClassLegendHorizontalHtml() {
+      const items = DW_CLASSES.map((c) =>
+        `<div class="map-legend-item"><span class="map-legend-swatch" style="background:${c.color};"></span><span class="map-legend-label">${c.label}</span></div>`
+      ).join("");
+      return `<div class="map-inline-legend horizontal"><div class="map-legend-title">Dynamic World classes</div><div class="legend-row">${items}</div></div>`;
+    }
+
+    function buildChangeOnlyLegendHtml() {
+      return `<div class="map-inline-legend single"><div class="map-legend-title">Change mask</div><div class="map-legend-item"><span class="map-legend-swatch" style="background:#ff00ff;border-color:#d946ef;"></span><span class="map-legend-label">Change</span></div></div>`;
+    }
+
+    function syncChangeModeLegends(isChangeMode) {
+      const globalLegend = document.getElementById("map-legend");
+      if (globalLegend) {
+        globalLegend.style.display = isChangeMode ? "none" : "block";
+      }
+
+      if (isChangeMode) {
+        if (mapB && !classLegendControlB) {
+          classLegendControlB = makeLegendControl("bottomleft", buildClassLegendHorizontalHtml());
+          classLegendControlB.addTo(mapB);
+        }
+        if (mapC && !changeLegendControlC) {
+          changeLegendControlC = makeLegendControl("topright", buildChangeOnlyLegendHtml());
+          changeLegendControlC.addTo(mapC);
+        }
+      } else {
+        if (mapB && classLegendControlB) {
+          mapB.removeControl(classLegendControlB);
+          classLegendControlB = null;
+        }
+        if (mapC && changeLegendControlC) {
+          mapC.removeControl(changeLegendControlC);
+          changeLegendControlC = null;
+        }
+      }
     }
 
     function updateDateUIForMode() {
@@ -2078,6 +2167,7 @@
         await loadChangeDetectionStats(state);
 
         applyChangeModeLayerControls();
+        syncChangeModeLegends(true);
 
         if (mapA.hasLayer(floodSpotsLayerA)) {
           mapA.removeLayer(floodSpotsLayerA);
@@ -2241,6 +2331,7 @@
           mapC.removeControl(layerControlC);
           layerControlC = null;
         }
+        syncChangeModeLegends(false);
 
         setTimeout(() => {
           mapA.invalidateSize();
@@ -2436,6 +2527,7 @@
     initDateInputs();
     updateDateUIForMode();
     updateVideoToolsVisibility();
+    syncChangeModeLegends(currentMode() === "change_detection");
     loadMapFromBackend();
 
     window.addEventListener("resize", () => {
