@@ -24,12 +24,22 @@ def next_month(y: int, m: int):
     return y, m + 1
 
 
-def dw_visual_for_date_range(region: ee.Geometry, start_iso: str, end_iso: str) -> ee.Image:
+def dw_visual_for_date_range(
+    region: ee.Geometry, start_iso: str, end_iso: str, pad_days: int = 2
+) -> ee.Image:
+    """Widen the collection window by ±pad_days so sparse DW dates still yield a frame."""
+    d0 = date.fromisoformat(str(start_iso)[:10])
+    d1 = date.fromisoformat(str(end_iso)[:10])
+    if d1 < d0:
+        d0, d1 = d1, d0
+    p0 = (d0 - timedelta(days=pad_days)).isoformat()
+    p1 = (d1 + timedelta(days=pad_days)).isoformat()
+
     palette = ["#" + c for c in CLASS_PALETTE]
 
     img = (
         ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
-        .filterDate(start_iso, end_iso)
+        .filterDate(p0, p1)
         .select("label")
         .mode()
     )
