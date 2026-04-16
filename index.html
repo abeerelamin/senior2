@@ -438,6 +438,48 @@
       min-width: 140px;
     }
 
+    .city-autocomplete-wrap {
+      position: relative;
+    }
+
+    .city-suggestions {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 4px);
+      z-index: 3000;
+      max-height: min(280px, 42vh);
+      overflow-y: auto;
+      border-radius: 10px;
+      border: 1px solid rgba(71, 85, 105, 0.95);
+      background: rgba(15, 23, 42, 0.98);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(10px);
+    }
+
+    .city-suggestions[hidden] {
+      display: none !important;
+    }
+
+    .city-suggestion-item {
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.35;
+      color: #e2e8f0;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.55);
+    }
+
+    .city-suggestion-item:last-child {
+      border-bottom: none;
+    }
+
+    .city-suggestion-item:hover,
+    .city-suggestion-item.active {
+      background: rgba(59, 130, 246, 0.22);
+      color: #f8fafc;
+    }
+
     .change-presets {
       margin-bottom: 8px;
     }
@@ -1227,7 +1269,19 @@
             </div>
             <div class="toolbar-field city-field">
               <label for="city">Region</label>
-              <input id="city" type="text" placeholder="City or area… (optional on Home)" />
+              <div class="city-autocomplete-wrap">
+                <input
+                  id="city"
+                  type="text"
+                  placeholder="City or area… (optional on Home)"
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-autocomplete="list"
+                  aria-controls="city-suggestions"
+                  aria-expanded="false"
+                />
+                <div id="city-suggestions" class="city-suggestions" role="listbox" hidden></div>
+              </div>
               <div class="field-caption">Home: empty region = world view. Chat can set location.</div>
               <div id="region-chip-wrap" class="region-chip-wrap" hidden>
                 <span class="region-chip" id="region-chip-label"></span>
@@ -1344,6 +1398,10 @@
     let lastChangeStats = null;
     let lastVideoUrl = null;
     let busyCount = 0;
+    let citySuggestTimer = null;
+    let citySuggestSeq = 0;
+    let citySuggestHighlight = -1;
+    let citySuggestItems = [];
 
     const DW_CLASSES = [
       { label: "Water", color: "#419bdf" },
@@ -1937,6 +1995,96 @@
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
+    }
+
+    function hideCitySuggestions() {
+      const box = document.getElementById("city-suggestions");
+      const input = document.getElementById("city");
+      if (!box || !input) return;
+      box.hidden = true;
+      box.innerHTML = "";
+      citySuggestHighlight = -1;
+      citySuggestItems = [];
+      input.setAttribute("aria-expanded", "false");
+    }
+
+    function setCitySuggestionHighlight(idx) {
+      const box = document.getElementById("city-suggestions");
+      if (!box || box.hidden) return;
+      const rows = box.querySelectorAll(".city-suggestion-item");
+      if (idx < -1 || idx >= rows.length) return;
+      citySuggestHighlight = idx;
+      rows.forEach((r, i) => {
+        r.classList.toggle("active", i === idx && idx >= 0);
+      });
+    }
+
+    function applyCitySuggestion(label) {
+      const input = document.getElementById("city");
+      if (!input) return;
+      input.value = label;
+      hideCitySuggestions();
+      loadMapFromBackend();
+    }
+
+    function renderCitySuggestions(items) {
+      const box = document.getElementById("city-suggestions");
+      const input = document.getElementById("city");
+      if (!box || !input) return;
+      box.innerHTML = "";
+      citySuggestItems = items;
+      citySuggestHighlight = -1;
+      if (!items.length) {
+        box.hidden = true;
+        input.setAttribute("aria-expanded", "false");
+        return;
+      }
+      items.forEach((it) => {
+        const div = document.createElement("div");
+        div.className = "city-suggestion-item";
+        div.setAttribute("role", "option");
+        div.textContent = it.label;
+        div.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          applyCitySuggestion(it.label);
+        });
+        box.appendChild(div);
+      });
+      box.hidden = false;
+      input.setAttribute("aria-expanded", "true");
+    }
+
+    async function fetchCitySuggestionsForInput(q) {
+      const seq = ++citySuggestSeq;
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/place-suggestions?q=${encodeURIComponent(q)}&limit=8`
+        );
+        if (seq !== citySuggestSeq) return;
+        if (!res.ok) return;
+        const data = await res.json();
+        if (seq !== citySuggestSeq) return;
+        const input = document.getElementById("city");
+        if (!input || input.value.trim() !== q) return;
+        if (!Array.isArray(data)) return;
+        renderCitySuggestions(data);
+      } catch (_e) {
+        return;
+      }
+    }
+
+    function scheduleCitySuggestions() {
+      clearTimeout(citySuggestTimer);
+      const input = document.getElementById("city");
+      if (!input) return;
+      const q = input.value.trim();
+      if (q.length < 2) {
+        hideCitySuggestions();
+        return;
+      }
+      citySuggestTimer = setTimeout(() => {
+        fetchCitySuggestionsForInput(q);
+      }, 400);
     }
 
     function riskIcon(level) {
@@ -2553,6 +2701,42 @@
     document.getElementById("dateB").addEventListener("change", loadMapFromBackend);
     document.getElementById("windowDays").addEventListener("change", loadMapFromBackend);
     document.getElementById("city").addEventListener("blur", loadMapFromBackend);
+    document.getElementById("city").addEventListener("blur", () => {
+      setTimeout(() => {
+        hideCitySuggestions();
+      }, 220);
+    });
+    document.getElementById("city").addEventListener("input", scheduleCitySuggestions);
+    document.getElementById("city").addEventListener("keydown", (e) => {
+      const box = document.getElementById("city-suggestions");
+      if (!box || box.hidden) {
+        if (e.key === "Escape") hideCitySuggestions();
+        return;
+      }
+      const n = citySuggestItems.length;
+      if (!n) return;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        hideCitySuggestions();
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const next = citySuggestHighlight < 0 ? 0 : Math.min(citySuggestHighlight + 1, n - 1);
+        setCitySuggestionHighlight(next);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const prev = citySuggestHighlight <= 0 ? -1 : citySuggestHighlight - 1;
+        setCitySuggestionHighlight(prev);
+        return;
+      }
+      if (e.key === "Enter" && citySuggestHighlight >= 0 && citySuggestItems[citySuggestHighlight]) {
+        e.preventDefault();
+        applyCitySuggestion(citySuggestItems[citySuggestHighlight].label);
+      }
+    });
 
     function onManualPresetFieldChange() {
       clearChangePresetSelection();
