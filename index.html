@@ -474,8 +474,44 @@
       min-width: 140px;
     }
 
+    .change-presets-panel {
+      display: none;
+      width: 100%;
+      min-width: 0;
+      border: 1px solid rgba(51, 65, 85, 0.9);
+      border-radius: 12px;
+      background: rgba(2, 6, 23, 0.62);
+      padding: 8px;
+    }
+
     #video-tools.video-inline {
       grid-column: 1 / -1;
+    }
+
+    .toolbar-fields.change-mode-layout {
+      grid-template-columns: minmax(250px, 1fr) minmax(250px, 1fr);
+      align-items: stretch;
+    }
+
+    .toolbar-fields.change-mode-layout #date-controls-row {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .toolbar-fields.change-mode-layout .city-field {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .toolbar-fields.change-mode-layout .change-presets-panel {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      display: block;
+      min-height: 100%;
+    }
+
+    .toolbar-fields.change-mode-layout .change-presets-panel .change-presets {
+      margin-bottom: 0;
     }
 
     @media (max-width: 980px) {
@@ -660,32 +696,28 @@
       display: none;
     }
 
-    .app-root.chat-dock-open .workspace-row {
-      display: flex;
-      align-items: stretch;
-      height: calc(100dvh - 220px);
-      min-height: 420px;
-      overflow: hidden;
-    }
-
-    .app-root.chat-dock-open .map-stage {
-      width: 75%;
-      min-width: 0;
-    }
-
     .app-root.chat-dock-open .assistant-dock {
-      width: 25%;
-      min-width: 300px;
-      height: 100%;
-      min-height: 0;
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: clamp(320px, 25vw, 460px);
+      min-width: 320px;
       display: flex;
       flex-direction: column;
       background: rgba(15, 23, 42, 0.95);
-      border-left: 1px solid rgba(51, 65, 85, 0.9);
+      border-left: 1px solid rgba(51, 65, 85, 0.92);
       backdrop-filter: blur(10px);
       padding: 10px;
       gap: 8px;
       overflow: hidden;
+      z-index: 2400;
+    }
+
+    .app-root.chat-dock-open .site-header,
+    .app-root.chat-dock-open .workspace-row,
+    .app-root.chat-dock-open #change-analysis-footer {
+      margin-right: clamp(320px, 25vw, 460px);
     }
 
     .assistant-dock-head {
@@ -781,31 +813,17 @@
       flex-shrink: 0;
     }
 
-    @media (max-width: 1100px) {
-      .app-root.chat-dock-open .map-stage {
-        width: 65%;
-      }
-      .app-root.chat-dock-open .assistant-dock {
-        width: 35%;
-        min-width: 260px;
-      }
-    }
-
     @media (max-width: 840px) {
-      .app-root.chat-dock-open .workspace-row {
-        display: block;
-        height: auto;
-        min-height: 0;
-        overflow: visible;
-      }
-      .app-root.chat-dock-open .map-stage {
-        width: 100%;
-      }
       .app-root.chat-dock-open .assistant-dock {
         width: 100%;
-        min-width: 0;
+        min-width: 100%;
         border-left: none;
-        border-top: 1px solid rgba(51, 65, 85, 0.9);
+        z-index: 2600;
+      }
+      .app-root.chat-dock-open .site-header,
+      .app-root.chat-dock-open .workspace-row,
+      .app-root.chat-dock-open #change-analysis-footer {
+        margin-right: 0;
       }
     }
 
@@ -1516,10 +1534,6 @@
             <div class="toolbar-fields">
             <div class="toolbar-field" id="date-controls-row">
               <label>Dates</label>
-              <div class="change-presets">
-                <div class="field-caption">Quick change-detection states (5): tap one to load instantly.</div>
-                <div class="preset-grid" id="changePresetGrid"></div>
-              </div>
               <div class="year-row">
                 <div id="dateA-container" style="flex:1;">
                   <small class="field-caption">Date A </small>
@@ -1554,6 +1568,12 @@
               <div id="region-chip-wrap" class="region-chip-wrap" hidden>
                 <span class="region-chip" id="region-chip-label"></span>
                 <button type="button" id="region-chip-clear" title="Clear region and return to world view">×</button>
+              </div>
+            </div>
+            <div class="toolbar-field change-presets-panel" id="change-presets-panel">
+              <div class="change-presets">
+                <div class="field-caption">Quick change-detection states (5): tap one to load instantly.</div>
+                <div class="preset-grid" id="changePresetGrid"></div>
               </div>
             </div>
             <div id="video-tools" class="video-inline" style="display:none;">
@@ -2148,6 +2168,8 @@
       const mode = currentMode();
       const bBox = document.getElementById("dateB-container");
       const presetsWrap = document.querySelector(".change-presets");
+      const presetsPanel = document.getElementById("change-presets-panel");
+      const toolbarFields = document.querySelector(".toolbar-fields");
       const windowWrap = document.getElementById("change-window-wrap");
       if (mode === "home") {
         bBox.style.display = "none";
@@ -2156,6 +2178,8 @@
       }
       const showChangeOnly = mode === "change_detection";
       if (presetsWrap) presetsWrap.style.display = showChangeOnly ? "block" : "none";
+      if (presetsPanel) presetsPanel.style.display = showChangeOnly ? "block" : "none";
+      if (toolbarFields) toolbarFields.classList.toggle("change-mode-layout", showChangeOnly);
       if (windowWrap) windowWrap.style.display = showChangeOnly ? "block" : "none";
     }
 
