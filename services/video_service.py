@@ -9,7 +9,7 @@ import numpy as np
 import requests
 from fastapi import HTTPException
 from fastapi.responses import FileResponse
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 from config import CLASS_PALETTE
 from schemas.requests import VideoRequest
@@ -47,6 +47,58 @@ def dw_visual_for_date_range(
     return img.visualize(min=0, max=8, palette=palette).clip(region)
 
 
+def _video_legend_font(size_px: int) -> ImageFont.ImageFont:
+    px = max(9, min(13, size_px // 80))
+    for path in (
+        "arial.ttf",
+        "C:\\Windows\\Fonts\\arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    ):
+        try:
+            return ImageFont.truetype(path, px)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
+
+def add_horizontal_dw_legend_strip(base: Image.Image) -> Image.Image:
+    """Append a compact Dynamic World color strip (same classes as the app legend)."""
+    w, h = base.size
+    strip_h = max(46, int(w * 0.052))
+    out = Image.new("RGB", (w, h + strip_h), (15, 23, 42))
+    out.paste(base, (0, 0))
+    dr = ImageDraw.Draw(out)
+    dr.rectangle([0, h, w, h + strip_h], outline=(71, 85, 105), width=1)
+    font = _video_legend_font(w)
+    title = "Dynamic World"
+    try:
+        tb = dr.textbbox((0, 0), title, font=font)
+        tw, th = tb[2] - tb[0], tb[3] - tb[1]
+    except Exception:
+        tw, th = 90, 12
+    ty = h + max(3, (strip_h - th) // 2)
+    dr.text((8, ty), title, fill=(241, 245, 249), font=font)
+    margin_left = min(w - 24, 12 + tw + 10)
+    n = len(CLASS_PALETTE)
+    usable = max(1, w - margin_left - 10)
+    gap = 2 if n > 1 else 0
+    sq = max(6, min(20, (usable - gap * (n - 1)) // n)) if n else 6
+    x = margin_left
+    y_sq = h + (strip_h - sq) // 2
+    for hexs in CLASS_PALETTE:
+        if x + sq > w - 4:
+            break
+        rgb = tuple(int(hexs[j : j + 2], 16) for j in (0, 2, 4))
+        dr.rectangle(
+            [x, y_sq, x + sq - 1, y_sq + sq - 1],
+            fill=rgb,
+            outline=(148, 163, 184),
+        )
+        x += sq + gap
+    return out
+
+
 def add_frame_label(img: Image.Image, label: str) -> Image.Image:
     draw = ImageDraw.Draw(img)
     pad = 12
@@ -77,6 +129,7 @@ def download_dw_frame(region: ee.Geometry, start_iso: str, end_iso: str, size: i
     r.raise_for_status()
 
     img = Image.open(io.BytesIO(r.content)).convert("RGB")
+    img = add_horizontal_dw_legend_strip(img)
     img = add_frame_label(img, label)
     return np.array(img)
 

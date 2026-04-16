@@ -831,6 +831,38 @@
       color: #e5e7eb;
     }
 
+    /* Home: horizontal legend bar along bottom of map stage */
+    .map-legend.map-legend--home-bottom {
+      left: 50%;
+      right: auto;
+      transform: translateX(-50%);
+      width: min(calc(100% - 20px), 920px);
+      max-width: none;
+      max-height: none;
+      overflow-x: auto;
+      overflow-y: hidden;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 6px 12px;
+      padding: 8px 12px 10px;
+      scrollbar-width: thin;
+    }
+
+    .map-legend.map-legend--home-bottom .map-legend-title {
+      flex: 0 0 100%;
+      text-align: center;
+      margin-bottom: 2px;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+    }
+
+    .map-legend.map-legend--home-bottom .map-legend-item {
+      margin-bottom: 0;
+      flex-shrink: 0;
+    }
+
     .leaflet-control.custom-map-legend {
       margin: 10px !important;
     }
@@ -2618,8 +2650,8 @@
 
         const mapLegendGlobal = document.getElementById("map-legend");
         if (mapLegendGlobal) {
-          mapLegendGlobal.style.display =
-            mode === "timeseries" || mode === "home" ? "none" : "block";
+          mapLegendGlobal.classList.toggle("map-legend--home-bottom", mode === "home");
+          mapLegendGlobal.style.display = mode === "timeseries" ? "none" : "block";
         }
 
         setTimeout(() => {
