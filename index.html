@@ -831,36 +831,22 @@
       color: #e5e7eb;
     }
 
-    /* Home: horizontal legend bar along bottom of map stage */
+    /* Match change-mode DW card: compact horizontal strip; home pins it bottom-center */
+    #map-legend:has(> .map-inline-legend) {
+      padding: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      backdrop-filter: none;
+      max-height: none;
+      overflow: visible;
+    }
+
     .map-legend.map-legend--home-bottom {
       left: 50%;
       right: auto;
       transform: translateX(-50%);
-      width: min(calc(100% - 20px), 920px);
-      max-width: none;
-      max-height: none;
-      overflow-x: auto;
-      overflow-y: hidden;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: center;
-      gap: 6px 12px;
-      padding: 8px 12px 10px;
-      scrollbar-width: thin;
-    }
-
-    .map-legend.map-legend--home-bottom .map-legend-title {
-      flex: 0 0 100%;
-      text-align: center;
-      margin-bottom: 2px;
-      font-size: 10px;
-      letter-spacing: 0.04em;
-    }
-
-    .map-legend.map-legend--home-bottom .map-legend-item {
-      margin-bottom: 0;
-      flex-shrink: 0;
+      max-width: min(92vw, 680px);
     }
 
     .leaflet-control.custom-map-legend {
@@ -1211,11 +1197,20 @@
     }
 
     @media (max-width: 699px) {
-      .map-legend {
+      .map-legend:not(.map-legend--home-bottom) {
         top: 10px;
         bottom: auto;
         right: 10px;
         max-height: min(36vh, 220px);
+      }
+
+      .map-legend.map-legend--home-bottom {
+        top: auto;
+        bottom: max(8px, env(safe-area-inset-bottom, 8px));
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        max-height: none;
       }
     }
   </style>
@@ -1704,21 +1699,6 @@
     }
     window.openHomeSpotReport = openHomeSpotReport;
 
-    function buildLegend() {
-      const legend = document.getElementById("map-legend");
-      const items = DW_CLASSES.map(c => `
-        <div class="map-legend-item">
-          <span class="map-legend-swatch" style="background:${c.color};"></span>
-          <span class="map-legend-label">${c.label}</span>
-        </div>
-      `).join("");
-      legend.innerHTML = `
-        <div class="map-legend-title">Dynamic World</div>
-        ${items}
-      `;
-    }
-    buildLegend();
-
     function initDateInputs() {
       const da = document.getElementById("dateA");
       const db = document.getElementById("dateB");
@@ -1845,6 +1825,12 @@
       ).join("");
       return `<div class="map-inline-legend horizontal"><div class="map-legend-title">Dynamic World classes</div><div class="legend-row">${items}</div></div>`;
     }
+
+    function buildLegend() {
+      const legend = document.getElementById("map-legend");
+      if (legend) legend.innerHTML = buildClassLegendHorizontalHtml();
+    }
+    buildLegend();
 
     function buildChangeOnlyLegendHtml() {
       return `<div class="map-inline-legend single"><div class="map-legend-title">Change mask</div><div class="map-legend-item"><span class="map-legend-swatch" style="background:#ff00ff;border-color:#d946ef;"></span><span class="map-legend-label">Change</span></div></div>`;
@@ -2671,6 +2657,27 @@
       return r && r.value === "weekly" ? "weekly" : "monthly";
     }
 
+    function parseContentDispositionFilename(headerVal) {
+      if (!headerVal || typeof headerVal !== "string") return null;
+      const mStar = /filename\*=UTF-8''([^;\n]+)/i.exec(headerVal);
+      if (mStar) {
+        try {
+          return decodeURIComponent(mStar[1].trim().replace(/^"|"$/g, ""));
+        } catch (_e) {
+          return mStar[1].trim();
+        }
+      }
+      const mQ = /filename="((?:\\.|[^"\\])*)"/i.exec(headerVal);
+      if (mQ) return mQ[1].replace(/\\"/g, '"');
+      const mBare = /filename=([^;\r\n]+)/i.exec(headerVal);
+      if (mBare) return mBare[1].trim().replace(/^["']|["']$/g, "");
+      return null;
+    }
+
+    function safeVideoFilename(name) {
+      return String(name).replace(/[\\/:*?"<>|]/g, "_").trim().slice(0, 200) || "timeseries.mp4";
+    }
+
     async function generateTimeSeriesVideo() {
       beginLoading();
       const status = document.getElementById("video-status");
@@ -2711,9 +2718,12 @@
 
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
+        const fallbackName = `timeseries_${cadence}_${(state.city || "region").replace(/\s+/g, "_")}_${String(state.date_a).slice(0, 10)}_${String(state.date_b).slice(0, 10)}.mp4`;
+        const fd = parseContentDispositionFilename(res.headers.get("Content-Disposition"));
+        const downloadName = safeVideoFilename(fd || fallbackName);
 
         link.href = url;
-        link.download = `timeseries_${cadence}_${(state.city || "region").replace(/\s+/g, "_")}_${String(state.date_a).slice(0, 10)}_${String(state.date_b).slice(0, 10)}.mp4`;
+        link.setAttribute("download", downloadName);
         link.style.display = "inline-block";
         link.textContent = "Download video";
 

@@ -11,7 +11,7 @@ from fastapi import HTTPException
 from fastapi.responses import FileResponse
 from PIL import Image, ImageDraw, ImageFont
 
-from config import CLASS_PALETTE
+from config import CLASS_LABELS, CLASS_PALETTE
 from schemas.requests import VideoRequest
 from services.ee_runtime import init_ee
 import services.ee_runtime as ee_runtime
@@ -47,8 +47,8 @@ def dw_visual_for_date_range(
     return img.visualize(min=0, max=8, palette=palette).clip(region)
 
 
-def _video_legend_font(size_px: int) -> ImageFont.ImageFont:
-    px = max(9, min(13, size_px // 80))
+def _video_truetype(px: int):
+    px = max(8, min(14, px))
     for path in (
         "arial.ttf",
         "C:\\Windows\\Fonts\\arial.ttf",
@@ -63,39 +63,67 @@ def _video_legend_font(size_px: int) -> ImageFont.ImageFont:
 
 
 def add_horizontal_dw_legend_strip(base: Image.Image) -> Image.Image:
-    """Append a compact Dynamic World color strip (same classes as the app legend)."""
+    """Labeled 3×3 grid matching app DW classes (same order as CLASS_LABELS)."""
     w, h = base.size
-    strip_h = max(46, int(w * 0.052))
+    title_h = 20
+    row_h = max(34, int(w * 0.034))
+    strip_h = max(118, title_h + 3 * row_h + 14)
     out = Image.new("RGB", (w, h + strip_h), (15, 23, 42))
     out.paste(base, (0, 0))
     dr = ImageDraw.Draw(out)
     dr.rectangle([0, h, w, h + strip_h], outline=(71, 85, 105), width=1)
-    font = _video_legend_font(w)
-    title = "Dynamic World"
-    try:
-        tb = dr.textbbox((0, 0), title, font=font)
-        tw, th = tb[2] - tb[0], tb[3] - tb[1]
-    except Exception:
-        tw, th = 90, 12
-    ty = h + max(3, (strip_h - th) // 2)
-    dr.text((8, ty), title, fill=(241, 245, 249), font=font)
-    margin_left = min(w - 24, 12 + tw + 10)
-    n = len(CLASS_PALETTE)
-    usable = max(1, w - margin_left - 10)
-    gap = 2 if n > 1 else 0
-    sq = max(6, min(20, (usable - gap * (n - 1)) // n)) if n else 6
-    x = margin_left
-    y_sq = h + (strip_h - sq) // 2
-    for hexs in CLASS_PALETTE:
-        if x + sq > w - 4:
-            break
+    font_title = _video_truetype(max(10, int(w / 90)))
+    font_label = _video_truetype(max(8, int(w / 110)))
+    title = (
+        "Dynamic World — class labels (0–8) match the app legend"
+        if w >= 520
+        else "DW classes 0–8 — labels below"
+    )
+    dr.text((8, h + 4), title, fill=(226, 232, 240), font=font_title)
+
+    pad_x = 6
+    cell_w = max(1, (w - 2 * pad_x) // 3)
+    y_base = h + title_h + 2
+
+    def _label_lines(num: int, name: str):
+        """Index + readable name (two lines when needed)."""
+        n = name.strip()
+        line_a = f"{num}. {n}"
+        if len(line_a) <= 26:
+            return [line_a]
+        # Long names: split at space if room for two short lines
+        if " " in n and len(n) > 18:
+            parts = n.split()
+            mid = max(1, len(parts) // 2)
+            a = " ".join(parts[:mid])
+            b = " ".join(parts[mid:])
+            return [f"{num}. {a}", b]
+        return [line_a[:28] + "…"]
+
+    for idx in range(len(CLASS_LABELS)):
+        name = CLASS_LABELS[idx]
+        hexs = CLASS_PALETTE[idx]
+        col = idx % 3
+        row = idx // 3
+        x0 = pad_x + col * cell_w
+        y0 = y_base + row * row_h
         rgb = tuple(int(hexs[j : j + 2], 16) for j in (0, 2, 4))
+        sq = max(12, min(20, cell_w // 5))
         dr.rectangle(
-            [x, y_sq, x + sq - 1, y_sq + sq - 1],
+            [x0, y0 + 1, x0 + sq - 1, y0 + sq],
             fill=rgb,
             outline=(148, 163, 184),
         )
-        x += sq + gap
+        tx = x0 + sq + 4
+        lines = _label_lines(idx, name)
+        ly = y0 + 1
+        for line in lines:
+            dr.text((tx, ly), line, fill=(226, 232, 240), font=font_label)
+            try:
+                bb = dr.textbbox((0, 0), line, font=font_label)
+                ly += (bb[3] - bb[1]) + 1
+            except Exception:
+                ly += 11
     return out
 
 
