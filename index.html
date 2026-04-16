@@ -828,11 +828,36 @@
 
     .map-grid.has-change-row .map-grid-row {
       flex: 1 1 0;
+      gap: 10px;
     }
 
     .map-grid.has-change-row #map-panel-c:not([hidden]) {
       flex: 1 1 0;
-      min-height: 140px;
+      min-height: 170px;
+    }
+
+    .map-grid.has-change-row .map-panel {
+      border-color: rgba(71, 85, 105, 0.95);
+      background: linear-gradient(180deg, rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.55));
+      box-shadow: 0 16px 44px rgba(0, 0, 0, 0.5);
+    }
+
+    .map-grid.has-change-row .map-panel-header {
+      padding: 8px 12px;
+      border-bottom-color: rgba(51, 65, 85, 0.9);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.72));
+    }
+
+    .map-grid.has-change-row .map-panel-title {
+      font-weight: 700;
+      color: #e2e8f0;
+      letter-spacing: 0.01em;
+    }
+
+    .map-grid.has-change-row .map-download-btn {
+      background: rgba(37, 99, 235, 0.2);
+      border-color: rgba(96, 165, 250, 0.5);
+      color: #bfdbfe;
     }
 
     .map-grid.single-map-mode .map-grid-row {
@@ -1119,11 +1144,13 @@
     #change-analysis-footer {
       background: #0c1428;
       border-top: 1px solid #1e3a5f;
-      padding: 1.15rem 1.5rem;
+      border-radius: 14px;
+      border: 1px solid rgba(30, 58, 95, 0.95);
+      padding: 0.95rem 1.1rem 1rem;
       font-size: 0.875rem;
-      max-width: 1400px;
-      margin: 0 auto;
-      box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+      max-width: min(1400px, calc(100% - 16px));
+      margin: 8px auto 10px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
       color: #e8eef7;
     }
 
@@ -1143,6 +1170,11 @@
     #change-analysis-footer #summary {
       color: #e8eef7;
       line-height: 1.45;
+      flex: 1 1 460px;
+      max-height: min(30vh, 220px);
+      overflow: auto;
+      padding-right: 4px;
+      scrollbar-width: thin;
     }
 
     #change-analysis-footer #summary p {
@@ -1155,7 +1187,7 @@
     }
 
     #change-analysis-footer button.secondary {
-      margin-top: 0.75rem;
+      margin-top: 0.1rem;
       padding: 0.55rem 1.1rem;
       background: #2563eb;
       color: #fff;
@@ -1164,10 +1196,24 @@
       cursor: pointer;
       font-size: 0.875rem;
       font-weight: 600;
+      white-space: nowrap;
+      align-self: flex-start;
     }
 
     #change-analysis-footer button.secondary:hover {
       background: #3b82f6;
+    }
+
+    #change-analysis-footer:not([hidden]) {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 8px 14px;
+    }
+
+    #change-analysis-footer:not([hidden]) strong {
+      flex: 0 0 100%;
+      margin-bottom: 0.2rem;
     }
 
     #reportBox {
@@ -1397,6 +1443,15 @@
         right: auto;
         transform: translateX(-50%);
         max-height: none;
+      }
+
+      #change-analysis-footer:not([hidden]) {
+        display: block;
+      }
+
+      #change-analysis-footer button.secondary {
+        width: 100%;
+        margin-top: 0.6rem;
       }
     }
   </style>
