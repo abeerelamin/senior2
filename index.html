@@ -644,6 +644,9 @@
     .app-root.chat-dock-open .workspace-row {
       display: flex;
       align-items: stretch;
+      height: calc(100dvh - 220px);
+      min-height: 420px;
+      overflow: hidden;
     }
 
     .app-root.chat-dock-open .map-stage {
@@ -654,6 +657,8 @@
     .app-root.chat-dock-open .assistant-dock {
       width: 25%;
       min-width: 300px;
+      height: 100%;
+      min-height: 0;
       display: flex;
       flex-direction: column;
       background: rgba(15, 23, 42, 0.95);
@@ -661,6 +666,7 @@
       backdrop-filter: blur(10px);
       padding: 10px;
       gap: 8px;
+      overflow: hidden;
     }
 
     .assistant-dock-head {
@@ -720,6 +726,7 @@
       display: flex;
       gap: 8px;
       align-items: center;
+      flex-shrink: 0;
     }
 
     @media (max-width: 1100px) {
@@ -735,6 +742,9 @@
     @media (max-width: 840px) {
       .app-root.chat-dock-open .workspace-row {
         display: block;
+        height: auto;
+        min-height: 0;
+        overflow: visible;
       }
       .app-root.chat-dock-open .map-stage {
         width: 100%;
@@ -2144,14 +2154,8 @@
         return;
       }
 
-      const controlWords = ["year", "date", "map", "mode", "reset", "swap", "change detection", "time series", "prediction", "home", "forecast"];
-      const hasControlWord = controlWords.some(w => t.includes(w));
-      const hasDigits = /\d/.test(t);
-      const wordCount = t.split(/\s+/).filter(Boolean).length;
-
-      if (!hasControlWord && !hasDigits && wordCount > 0 && wordCount <= 4) {
-        cityInput.value = text.trim();
-      }
+      // Keep chat in guidance mode by default.
+      // Region is only changed with explicit phrasing (e.g. "set city/location/region to ...").
     }
 
     function escapeHtml(s) {
