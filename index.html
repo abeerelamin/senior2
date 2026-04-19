@@ -1634,6 +1634,30 @@
       margin-bottom: 0.5rem;
     }
 
+    .prediction-grid {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    
+    .prediction-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid rgba(71, 85, 105, 0.8);
+      border-radius: 12px;
+      padding: 10px;
+    }
+    
+    .prediction-card-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+    }
+
     .badge {
       display: inline-flex;
       align-items: center;
@@ -2098,7 +2122,7 @@
                 </div>
                 <div>
                   <small class="field-caption">Date</small>
-                  <select id="prediction-date">
+                  <input type="date" id="prediction-date" />
                     <option value="">Select date</option>
                   </select>
                 </div>
@@ -2147,9 +2171,21 @@
               </div>
               <div class="map-inner">
                 <div id="mapA"></div>
-                <div class="prediction-view" id="prediction-view" hidden>
-                  <img id="prediction-image" class="prediction-image" alt="Prediction image" hidden />
-                  <div id="prediction-msg" class="prediction-msg">Select region and date to load prediction image.</div>
+                  <div id="prediction-grid" class="prediction-grid" hidden>
+                    <div class="prediction-card">
+                      <div id="comparison-label" class="prediction-card-title">Comparison</div>
+                      <img id="comparison-image" class="prediction-image" alt="Comparison image" hidden />
+                    </div>
+                
+                    <div class="prediction-card">
+                      <div class="prediction-card-title">Prediction</div>
+                      <img id="prediction-image" class="prediction-image" alt="Prediction image" hidden />
+                    </div>
+                  </div>
+                
+                  <div id="prediction-msg" class="prediction-msg">
+                    Select region and date to load prediction image.
+                  </div>
                 </div>
                 <div class="video-preview" id="video-preview" hidden>
                   <div class="video-preview-head">
@@ -2860,33 +2896,105 @@
       }
     }
 
-    function loadPredictionImageFromSelection() {
-      const region = (document.getElementById("prediction-region") || {}).value || "";
-      const date = (document.getElementById("prediction-date") || {}).value || "";
-      const img = document.getElementById("prediction-image");
-      if (!img) return;
-      img.hidden = true;
-      img.removeAttribute("src");
-      if (!region || !date) {
-        showPredictionMessage("Select region and date to load prediction image.", false);
+    function getClosestPredictionDate(region, selectedDate) {
+  const dates = predictionDatesByRegion.has(region)
+    ? Array.from(predictionDatesByRegion.get(region))
+    : [];
+
+  if (!dates.length) return null;
+
+  const target = new Date(selectedDate).getTime();
+
+  let closest = dates[0];
+  let minDiff = Math.abs(new Date(closest).getTime() - target);
+
+  for (const d of dates) {
+    const diff = Math.abs(new Date(d).getTime() - target);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = d;
+    }
+  }
+
+  return closest;
+}
+
+function getActualImageUrl(region) {
+  return PREDICTION_IMAGE_BASE_URL + `${region}_actual.png`;
+}
+
+function getCurrentImageUrl(region) {
+  return PREDICTION_IMAGE_BASE_URL + `${region}_current.png`;
+}
+
+function preloadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(url);
+    img.onerror = () => reject();
+    img.src = url;
+  });
+}
+
+  async function loadPredictionImageFromSelection() {
+      const region = document.getElementById("prediction-region").value;
+      const selectedDate = document.getElementById("prediction-date").value;
+    
+      const predImg = document.getElementById("prediction-image");
+      const compImg = document.getElementById("comparison-image");
+      const grid = document.getElementById("prediction-grid");
+      const label = document.getElementById("comparison-label");
+      const msg = document.getElementById("prediction-msg");
+    
+      if (!region || !selectedDate) {
+        showPredictionMessage("Select region and date.", false);
         return;
       }
-      const filename = buildPredictionFilename(region, date);
-      const url = PREDICTION_IMAGE_BASE_URL + filename;
-      showPredictionMessage("Loading prediction image...", false);
-      img.onload = () => {
-        img.hidden = false;
-        const msg = document.getElementById("prediction-msg");
-        if (msg) msg.hidden = true;
-      };
-      img.onerror = () => {
-        img.hidden = true;
-        img.removeAttribute("src");
-        showPredictionMessage("Image not available for this region and date", true);
-      };
-      img.src = url;
+    
+      const closestDate = getClosestPredictionDate(region, selectedDate);
+      if (!closestDate) {
+        showPredictionMessage("No prediction data.", true);
+        return;
+      }
+    
+      const predictionUrl =
+        PREDICTION_IMAGE_BASE_URL +
+        `${region}_${closestDate}_predicted_full_rgb.png`;
+    
+      const today = new Date().toISOString().slice(0, 10);
+    
+      let comparisonUrl;
+      let comparisonText;
+    
+      if (selectedDate <= today) {
+        comparisonUrl = getActualImageUrl(region);
+        comparisonText = "Actual";
+      } else {
+        comparisonUrl = getCurrentImageUrl(region);
+        comparisonText = "Current";
+      }
+    
+      showPredictionMessage(`Closest date: ${closestDate}`, false);
+    
+      try {
+        const [c, p] = await Promise.all([
+          preloadImage(comparisonUrl),
+          preloadImage(predictionUrl)
+        ]);
+    
+        compImg.src = c;
+        predImg.src = p;
+    
+        compImg.hidden = false;
+        predImg.hidden = false;
+        grid.hidden = false;
+        msg.hidden = true;
+    
+        label.textContent = comparisonText;
+      } catch {
+        showPredictionMessage("Images not available.", true);
+      }
     }
-
     function renderPredictionModeOnlyView() {
       const mapGridRoot = document.getElementById("map-grid-root");
       const panelA = document.getElementById("map-panel-a");
@@ -3956,10 +4064,7 @@
       loadMapFromBackend();
     });
 
-    document.getElementById("prediction-region").addEventListener("change", () => {
-      updatePredictionDateOptions();
-      loadPredictionImageFromSelection();
-    });
+    document.getElementById("prediction-region").addEventListener("change", loadPredictionImageFromSelection);
     document.getElementById("prediction-date").addEventListener("change", loadPredictionImageFromSelection);
 
     async function downloadMapSnapshot(map, panelTitle) {
